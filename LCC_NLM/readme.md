@@ -75,6 +75,8 @@
 
 ## 3. 算法改善
 
+### 3.1 公式调整1
+
 算法在计算mask时, 进行了取反, 在进行gamma校正时, 也是做了取反, 实际上做了重复的工作, 因而可以进行简化, 简化后的校正公式为:
 $$
 O_{xy} = 255 * (\frac{I_{xy}}{255}) ^ {2 ^ {\frac{m_{xy}-127}{128}}}
@@ -84,4 +86,47 @@ $$
 ![](https://gitee.com/yfor1008/pictures/raw/master/202108111300351.jpg)
 
 可以看到, 二者完全是一样的效果.
+
+### 3.2 公式调整2
+
+结合上面说的拉伸方法, 可以直接在公式中进行更改, 更改后公式如下:
+$$
+O_{xy} = 255 * (\frac{I_{xy}}{ratio}) ^ {2 ^ {\frac{m_{xy}-127}{128}}}
+$$
+其中, ratio 为抛出一定比例后的最大值, 下图所示为抛出1%后的效果:
+
+![pout_ratio_cmp](https://gitee.com/yfor1008/pictures/raw/master/pout_ratio_cmp.jpg)
+
+![test_ratio_cmp](https://gitee.com/yfor1008/pictures/raw/master/test_ratio_cmp.jpg)
+
+## 4. 代码
+
+原始方法:
+
+```matlab
+gray = double(gray);
+gray_inv = 255 - gray;
+mask = meanFilterSat(gray_inv, radius);
+lcc = 255 * (gray / 255) .^ (2 .^((128 - mask) / 128));
+```
+
+调整后:
+
+```matlab
+gray = double(gray);
+mask = meanFilterSat(gray, radius);
+lcc = 255 * (gray / 255) .^ (2 .^((mask - 127) / 128));
+```
+
+最后, 使用ratio的方法为:
+
+```matlab
+gray = double(gray);
+mask = meanFilterSat(gray, radius); % 快速均值滤波
+h_gray = hist_count(gray); % 直方图
+ranges = getRanges(h_gray, 0.01); % 动态范围
+lcc = 255 * (gray / ranges(2)) .^ (2 .^((mask - 127) / 128));
+```
+
+
 
